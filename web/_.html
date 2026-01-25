@@ -820,20 +820,6 @@
                             document.getElementById("room-error-desc").innerText = err.desc;
                         }
                     }).catch(() => {
-                        failCounter += 1;
-                        if (failCounter == 3) {
-                            clearInterval(timer);
-
-                            let error;
-                            if (Math.max(...durations) > 20000) {
-                                error = { "title": "请重启主程序", "desc": "为降低功耗，Terracotta | 陶瓦闲置十分钟后将自动退出。" };
-                            } else {
-                                error = { "title": "程序出现错误", "desc": "请向开发者报告该错误" };
-                            }
-                            document.getElementById("error-title").innerText = error.title;
-                            document.getElementById("error-desc").innerText = error.desc;
-                            showView("error-view");
-                        }
                     });
                 });
             }, 500);

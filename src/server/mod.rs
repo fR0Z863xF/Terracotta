@@ -73,7 +73,7 @@ fn devtools() -> Status {
 pub async fn server_main(port_callback: mpsc::Sender<u16>) {
     let rocket = rocket::custom(rocket::Config {
         log_level: rocket::log::LogLevel::Critical,
-        port: 0,
+        port: 47619,  // 固定端口47619
         workers: 2,
         ..rocket::Config::default()
     });
