@@ -160,7 +160,7 @@ pub fn start_host(room: Room, port: u16, player: Option<String>, capture: AppSta
                 SystemTime::now(),
                 ProfileSnapshot {
                     machine_id: MACHINE_ID.to_string(),
-                    name: player.unwrap_or("Terracotta Anonymous Host".to_string()),
+                    name: player.unwrap_or("Terracotta Anonymous Dedicated Server".to_string()),
                     vendor: VENDOR.to_string(),
                     kind: ProfileKind::HOST
                 }.into_profile()
@@ -173,7 +173,7 @@ pub fn start_host(room: Room, port: u16, player: Option<String>, capture: AppSta
         loop {
             thread::sleep(Duration::from_secs(5));
 
-            if legacy::check_mc_conn(port) {
+            /*if legacy::check_mc_conn(port) {
                 counter = 0;
             } else {
                 counter += 1;
@@ -184,7 +184,7 @@ pub fn start_host(room: Room, port: u16, player: Option<String>, capture: AppSta
                     state.set(AppState::Exception { kind: ExceptionType::PingServerRst });
                     return;
                 }
-            }
+            }*/
 
             let Some(mut state) = capture.try_capture() else {
                 return;
