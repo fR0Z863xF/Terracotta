@@ -281,7 +281,7 @@ extern "system" fn jni_set_scanning<'l>(jenv: JNIEnv<'l>, _: JClass<'l>, room: J
     try_jvm! { |jenv|
         let room = parse_jstring(&jenv, &room);
         let player = parse_jstring(&jenv, &player);
-        controller::set_scanning(room, player);
+        controller::set_scanning(room, player, vec![]);
     }
 }
 
@@ -290,7 +290,7 @@ extern "system" fn jni_set_guesting<'l>(jenv: JNIEnv<'l>, _: JClass<'l>, room: J
         let room = parse_jstring(&jenv, &room).expect("'room' must not be NULL.");
         let player = parse_jstring(&jenv, &player);
 
-        if let Some(room) = Room::from(&room) && controller::set_guesting(room, player) {
+        if let Some(room) = Room::from(&room) && controller::set_guesting(room, player, vec![]) {
             JNI_TRUE
         } else {
             JNI_FALSE
@@ -304,9 +304,7 @@ extern "system" fn jni_verify_room_code<'l>(jenv: JNIEnv<'l>, _: JClass<'l>, roo
 
         match Room::from(&room) {
             Some(Room { kind, .. }) => match kind {
-                RoomKind::TerracottaLegacy { .. } => 1,
-                RoomKind::PCL2CE { .. } => 2,
-                RoomKind::Experimental { .. } => 3
+                RoomKind::Scaffolding { .. } => 3
             },
             None => -1
         }

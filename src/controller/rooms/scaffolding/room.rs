@@ -1,10 +1,10 @@
-use crate::controller::experimental::{MACHINE_ID, VENDOR};
-use crate::controller::rooms::legacy;
+use crate::controller::scaffolding::{MACHINE_ID, VENDOR};
 use crate::controller::states::{AppState, AppStateCapture};
 use crate::controller::{ConnectionDifficulty, ExceptionType, Room, RoomKind, SCAFFOLDING_PORT};
 use crate::easytier;
 use crate::easytier::argument::{Argument, PortForward, Proto};
-use crate::easytier::publics::{fetch_public_nodes, PublicServers};
+use crate::easytier::publics::PublicServers;
+use crate::easytier::EasyTierMember;
 use crate::mc::fakeserver::FakeServer;
 use crate::ports::PortRequest;
 use crate::scaffolding::client::ClientSession;
@@ -12,13 +12,13 @@ use crate::scaffolding::profile::{Profile, ProfileKind, ProfileSnapshot};
 use crate::scaffolding::PacketResponse;
 use rand_core::{OsRng, TryRngCore};
 use serde_json::{json, Value};
+use socket2::{Domain, SockAddr, Socket, Type};
 use std::borrow::Cow;
 use std::mem::{transmute, MaybeUninit};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddrV4, SocketAddrV6};
 use std::str::FromStr;
-use std::time::{Duration, SystemTime};
 use std::thread;
-use crate::easytier::EasyTierMember;
+use std::time::{Duration, SystemTime};
 
 static CHARS: &[u8] = "0123456789ABCDEFGHJKLMNPQRSTUVWXYZ".as_bytes();
 
@@ -52,7 +52,7 @@ pub fn create_room() -> Room {
         code,
         network_name,
         network_secret,
-        kind: RoomKind::Experimental { seed: value },
+        kind: RoomKind::Scaffolding { seed: value },
     }
 }
 
@@ -95,7 +95,7 @@ pub fn parse(code: &str) -> Option<Room> {
         code,
         network_name,
         network_secret,
-        kind: RoomKind::Experimental { seed: value },
+        kind: RoomKind::Scaffolding { seed: value },
     })
 }
 
@@ -215,8 +215,8 @@ pub fn start_host(room: Room, port: u16, player: Option<String>, capture: AppSta
     });
 }
 
-pub fn start_guest(room: Room, player: Option<String>, capture: AppStateCapture) {
-    let mut args = compute_arguments(&room, fetch_public_nodes(&room));
+pub fn start_guest(room: Room, player: Option<String>, capture: AppStateCapture, public_servers: PublicServers) {
+    let mut args = compute_arguments(&room, public_servers);
     args.push(Argument::DHCP);
     args.push(Argument::TcpWhitelist(0));
     args.push(Argument::UdpWhitelist(0));
@@ -409,7 +409,7 @@ pub fn start_guest(room: Room, player: Option<String>, capture: AppStateCapture)
     };
 
     for _ in 0..8 {
-        if legacy::check_mc_conn(local_port) {
+        if check_mc_conn(local_port) {
             break;
         }
     }
@@ -622,4 +622,32 @@ fn compute_arguments(room: &Room, public_servers: PublicServers) -> Vec<Argument
 
     args.extend_from_slice(&DEFAULT_ARGUMENTS);
     args
+}
+
+fn check_mc_conn(port: u16) -> bool {
+    let start = SystemTime::now();
+
+    let socket = Socket::new(Domain::IPV4, Type::STREAM, None).unwrap();
+    socket.set_read_timeout(Some(Duration::from_secs(64))).unwrap();
+    socket.set_write_timeout(Some(Duration::from_secs(64))).unwrap();
+    if let Ok(_) = socket.connect_timeout(
+        &SockAddr::from(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), port)),
+        Duration::from_secs(64),
+    ) && let Ok(_) = socket.send(&[0xFE]) {
+        let mut buf: [MaybeUninit<u8>; _] = [MaybeUninit::uninit(); 1];
+
+        if let Ok(size) = socket.recv(&mut buf) && size >= 1
+            // SAFETY: The first byte has been initialized by recv, as size >= 1
+            && unsafe { buf[0].assume_init() } == 0xFF
+        {
+            return true;
+        }
+    }
+
+    thread::sleep(
+        (start + Duration::from_secs(5))
+            .duration_since(SystemTime::now())
+            .unwrap_or(Duration::ZERO),
+    );
+    false
 }
